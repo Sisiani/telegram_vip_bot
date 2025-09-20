@@ -25,10 +25,14 @@ def main_menu_kb():
             InlineKeyboardButton(text="🧾 مشخصات حساب", callback_data="account"),
         ],
         [
-            InlineKeyboardButton(text="☎️ پشتیبانی ربات", url="https://t.me/e11_s33"),
+            InlineKeyboardButton(text="☎️ پشتیبانی ربات", url="https://t.me/aiireza_1383"),
+        ],
+        [
+            InlineKeyboardButton(text="💰 ورود به صرافی", url="https://google.com")  # اینجا لینک صرافی رو بذار
         ]
     ])
     return kb
+
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
@@ -72,4 +76,5 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 
