@@ -25,7 +25,7 @@ def main_menu_kb():
             InlineKeyboardButton(text="🧾 مشخصات حساب", callback_data="account"),
         ],
         [
-            InlineKeyboardButton(text="☎️ پشتیبانی ربات", url="https://t.me/YourSupportUsername"),
+            InlineKeyboardButton(text="☎️ پشتیبانی ربات", url="https://t.me/e11_s33"),
         ]
     ])
     return kb
@@ -72,3 +72,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
