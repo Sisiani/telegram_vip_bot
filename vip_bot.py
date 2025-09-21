@@ -52,7 +52,7 @@ def main_menu_kb(user_id=None):
             InlineKeyboardButton(text="☎️ پشتیبانی ربات", url="https://t.me/aiireza_1383"),
         ],
         [
-            InlineKeyboardButton(text="💰 ورود به صرافی", callback_data="exchange_menu")
+            InlineKeyboardButton(text="💰کریپتو", callback_data="exchange_menu")
         ]
     ])
 
@@ -93,3 +93,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
