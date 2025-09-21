@@ -53,13 +53,11 @@ def main_menu_kb(user_id=None, is_vip=False):
         ]
     ])
 
-    # دکمه کریپتو فقط برای اعضای VIP
     if is_vip:
         kb.inline_keyboard.append(
             [InlineKeyboardButton(text="💰 کریپتو", callback_data="exchange_menu")]
         )
 
-    # دکمه ویژه فقط برای ادمین
     if user_id in ADMINS:
         kb.inline_keyboard.append(
             [InlineKeyboardButton(text="📢 ارسال پیام همگانی", callback_data="broadcast")]
@@ -136,6 +134,29 @@ async def cb_exchange_menu(callback: types.CallbackQuery):
 async def cb_back_to_main(callback: types.CallbackQuery):
     is_member = await user_is_member(callback.from_user.id)
     await callback.message.edit_text("به منوی اصلی بازگشتید:", reply_markup=main_menu_kb(callback.from_user.id, is_member))
+
+# === ارسال پیام همگانی برای ادمین ===
+@dp.callback_query(lambda c: c.data == "broadcast")
+async def cb_broadcast(callback: types.CallbackQuery):
+    if callback.from_user.id not in ADMINS:
+        return await callback.message.answer("❌ شما دسترسی ندارید.")
+    await callback.message.answer("✍️ پیام خود را ارسال کنید:")
+
+    @dp.message()
+    async def get_broadcast(msg: types.Message):
+        if msg.from_user.id not in ADMINS:
+            return
+        users = get_users()
+        sent = 0
+        for user_id in users:
+            try:
+                await bot.send_message(user_id, msg.text)
+                sent += 1
+                await asyncio.sleep(0.05)
+            except:
+                pass
+        await msg.answer(f"✅ پیام برای {sent} نفر ارسال شد.")
+        dp.message.handlers.unregister(get_broadcast)
 
 async def main():
     await dp.start_polling(bot)
