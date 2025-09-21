@@ -51,11 +51,10 @@ def main_menu_kb(user_id=None):
             InlineKeyboardButton(text="☎️ پشتیبانی ربات", url="https://t.me/aiireza_1383"),
         ],
         [
-            InlineKeyboardButton(text="💰 ورود به صرافی", url="https://google.com")
+            InlineKeyboardButton(text="💠 کریپتو", callback_data="crypto_menu")  # تغییر اسم و کارکرد
         ]
     ])
 
-    # دکمه ویژه فقط برای ادمین
     if user_id in ADMINS:
         kb.inline_keyboard.append(
             [InlineKeyboardButton(text="📢 ارسال پیام همگانی", callback_data="broadcast")]
@@ -64,7 +63,33 @@ def main_menu_kb(user_id=None):
     return kb
 
 
-@dp.message(Command("start"))
+# === منوی کریپتو (۴ دکمه جدید) ===
+def crypto_menu_kb():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💎 صرافی XT", url="https://www.xtfarsi.net/en/accounts/register?ref=1133 ")],
+        [InlineKeyboardButton(text="🚀 صرافی BITUNIX", url="https://www.bitunix.com/register?vipCode=hajamin")],
+        [InlineKeyboardButton(text="🏦 صرافی OURBIT", url="https://www.ourbit.com/register?inviteCode=S3ZCNR")],
+        [InlineKeyboardButton(text="📊 صرافی TOOBIT", url="https://www.toobit.com/t/lpOdP4")],
+        [InlineKeyboardButton(text="⬅️ بازگشت به منو", callback_data="back_main")]
+    ])
+
+
+# وقتی روی کریپتو کلیک بشه
+@dp.callback_query(lambda c: c.data == "crypto_menu")
+async def show_crypto_menu(callback: types.CallbackQuery):
+    await callback.message.edit_text(
+        "🌐 لطفاً یکی از صرافی‌های زیر را انتخاب کنید:",
+        reply_markup=crypto_menu_kb()
+    )
+
+# برگشت به منوی اصلی
+@dp.callback_query(lambda c: c.data == "back_main")
+async def back_to_main(callback: types.CallbackQuery):
+    await callback.message.edit_text(
+        "🔙 بازگشت به منوی اصلی",
+        reply_markup=main_menu_kb(callback.from_user.id)
+    )
+
 async def cmd_start(message: types.Message):
     save_user(message.from_user.id)  # ذخیره کاربر
     text = f"سلام {message.from_user.first_name or ''} 👋\nبه ربات VIP خوش آمدی!"
