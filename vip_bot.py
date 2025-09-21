@@ -6,7 +6,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
 
 # ---------- تنظیمات ----------
-BOT_TOKEN = "اینجا_توکن_رباتت"
+BOT_TOKEN = "8311865694:AAHrQDLSJcFKOztBj8X2PtMafk7U7AML0Uo"
 CHANNEL_ID = "@neuranacademy"
 ADMINS = [123456789]  # آیدی عددی خودت
 USERS_FILE = "users.json"
