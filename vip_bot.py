@@ -1,12 +1,15 @@
 import logging
+import json
+import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.filters import Command
-import asyncio
 
 # ---------- تنظیمات ----------
-BOT_TOKEN = "8311865694:AAHrQDLSJcFKOztBj8X2PtMafk7U7AML0Uo"
+BOT_TOKEN = "اینجا_توکن_رباتت"
 CHANNEL_ID = "@neuranacademy"
+ADMINS = [123456789]  # آیدی عددی خودت
+USERS_FILE = "users.json"
 # ------------------------------
 
 logging.basicConfig(level=logging.INFO)
@@ -14,7 +17,27 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher()
 
-def main_menu_kb():
+# === ذخیره کاربرها ===
+def save_user(user_id: int):
+    try:
+        with open(USERS_FILE, "r") as f:
+            users = json.load(f)
+    except FileNotFoundError:
+        users = []
+
+    if user_id not in users:
+        users.append(user_id)
+        with open(USERS_FILE, "w") as f:
+            json.dump(users, f)
+
+def get_users():
+    try:
+        with open(USERS_FILE, "r") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return []
+
+def main_menu_kb(user_id=None):
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="🔵 عضویت در کانال VIP", callback_data="check_sub"),
@@ -28,16 +51,25 @@ def main_menu_kb():
             InlineKeyboardButton(text="☎️ پشتیبانی ربات", url="https://t.me/aiireza_1383"),
         ],
         [
-            InlineKeyboardButton(text="💰 ورود به صرافی", url="https://google.com")  # اینجا لینک صرافی رو بذار
+            InlineKeyboardButton(text="💰 ورود به صرافی", url="https://google.com")
         ]
     ])
+
+    # دکمه ویژه فقط برای ادمین
+    if user_id in ADMINS:
+        kb.inline_keyboard.append(
+            [InlineKeyboardButton(text="📢 ارسال پیام همگانی", callback_data="broadcast")]
+        )
+
     return kb
 
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
+    save_user(message.from_user.id)  # ذخیره کاربر
     text = f"سلام {message.from_user.first_name or ''} 👋\nبه ربات VIP خوش آمدی!"
-    await message.answer(text, reply_markup=main_menu_kb())
+    await message.answer(text, reply_markup=main_menu_kb(message.from_user.id))
+
 
 async def user_is_member(user_id: int) -> bool:
     try:
@@ -71,10 +103,32 @@ async def cb_get_sub(callback: types.CallbackQuery):
 async def cb_bonus(callback: types.CallbackQuery):
     await callback.message.answer("🎁 بونوس شما: کد هدیه BONUS123")
 
+# === ارسال پیام همگانی فقط برای ادمین ===
+@dp.callback_query(lambda c: c.data == "broadcast")
+async def cb_broadcast(callback: types.CallbackQuery):
+    if callback.from_user.id not in ADMINS:
+        return await callback.message.answer("❌ شما دسترسی ندارید.")
+    await callback.message.answer("✍️ پیام خود را ارسال کنید:")
+
+    @dp.message()
+    async def get_broadcast(msg: types.Message):
+        if msg.from_user.id not in ADMINS:
+            return
+        users = get_users()
+        sent = 0
+        for user_id in users:
+            try:
+                await bot.send_message(user_id, msg.text)
+                sent += 1
+                await asyncio.sleep(0.05)
+            except:
+                pass
+        await msg.answer(f"✅ پیام برای {sent} نفر ارسال شد.")
+        dp.message.handlers.unregister(get_broadcast)
+
+
 async def main():
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-
