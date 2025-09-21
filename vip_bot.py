@@ -38,7 +38,7 @@ def get_users():
         return []
 
 # === کیبورد منوی اصلی ===
-def main_menu_kb(user_id=None):
+def main_menu_kb(user_id=None, is_vip=False):
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="🔵 عضویت در کانال VIP", callback_data="check_sub"),
@@ -50,12 +50,16 @@ def main_menu_kb(user_id=None):
         ],
         [
             InlineKeyboardButton(text="☎️ پشتیبانی ربات", url="https://t.me/aiireza_1383"),
-        ],
-        [
-            InlineKeyboardButton(text="💰کریپتو", callback_data="exchange_menu")
         ]
     ])
 
+    # دکمه کریپتو فقط برای اعضای VIP
+    if is_vip:
+        kb.inline_keyboard.append(
+            [InlineKeyboardButton(text="💰 کریپتو", callback_data="exchange_menu")]
+        )
+
+    # دکمه ویژه فقط برای ادمین
     if user_id in ADMINS:
         kb.inline_keyboard.append(
             [InlineKeyboardButton(text="📢 ارسال پیام همگانی", callback_data="broadcast")]
@@ -74,11 +78,55 @@ def exchange_menu_kb():
     ])
     return kb
 
+# === بررسی عضویت کانال ===
+async def user_is_member(user_id: int) -> bool:
+    try:
+        mem = await bot.get_chat_member(CHANNEL_ID, user_id)
+        return mem.status in ("creator", "administrator", "member")
+    except Exception as e:
+        logging.error(f"Error checking membership: {e}")
+        return False
+
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     save_user(message.from_user.id)
+    is_member = await user_is_member(message.from_user.id)
     text = f"سلام {message.from_user.first_name or ''} 👋\nبه ربات VIP خوش آمدی!"
-    await message.answer(text, reply_markup=main_menu_kb(message.from_user.id))
+    await message.answer(text, reply_markup=main_menu_kb(message.from_user.id, is_member))
+
+@dp.callback_query(lambda c: c.data == "check_sub")
+async def cb_check_sub(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    ok = await user_is_member(user_id)
+    if ok:
+        await callback.message.answer("✅ شما عضو کانال VIP هستید و دسترسی دارید.",
+                                      reply_markup=main_menu_kb(user_id, True))
+    else:
+        join_kb = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📢 ورود به کانال", url=f"https://t.me/{CHANNEL_ID.lstrip('@')}")],
+            [InlineKeyboardButton(text="📥 من عضو شدم، بررسی مجدد", callback_data="check_sub")]
+        ])
+        await callback.message.answer(
+            "⛔ شما هنوز عضو کانال نیستید.\nلطفاً عضو شوید و دوباره امتحان کنید.",
+            reply_markup=join_kb
+        )
+
+@dp.callback_query(lambda c: c.data == "account")
+async def cb_account(callback: types.CallbackQuery):
+    user_id = callback.from_user.id
+    ok = await user_is_member(user_id)
+    if ok:
+        await callback.message.answer("✅ شما اکنون عضو کانال VIP هستید")
+    else:
+        await callback.message.answer("⛔ شما هنوز وارد کانال VIP نشدید")
+
+@dp.callback_query(lambda c: c.data == "get_sub")
+async def cb_get_sub(callback: types.CallbackQuery):
+    await callback.message.answer("📩 برای خرید اشتراک اینجا لینک پرداخت قرار می‌گیرد.")
+
+@dp.callback_query(lambda c: c.data == "bonus")
+async def cb_bonus(callback: types.CallbackQuery):
+    await callback.message.answer("🎁 بونوس شما: کد هدیه BONUS123")
 
 @dp.callback_query(lambda c: c.data == "exchange_menu")
 async def cb_exchange_menu(callback: types.CallbackQuery):
@@ -86,11 +134,11 @@ async def cb_exchange_menu(callback: types.CallbackQuery):
 
 @dp.callback_query(lambda c: c.data == "back_to_main")
 async def cb_back_to_main(callback: types.CallbackQuery):
-    await callback.message.edit_text("به منوی اصلی بازگشتید:", reply_markup=main_menu_kb(callback.from_user.id))
+    is_member = await user_is_member(callback.from_user.id)
+    await callback.message.edit_text("به منوی اصلی بازگشتید:", reply_markup=main_menu_kb(callback.from_user.id, is_member))
 
 async def main():
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     asyncio.run(main())
-
