@@ -8,7 +8,7 @@ from aiogram.filters import Command
 # ---------- تنظیمات ----------
 BOT_TOKEN = "8311865694:AAHrQDLSJcFKOztBj8X2PtMafk7U7AML0Uo"
 CHANNEL_ID = "@neuranacademy"
-ADMINS = [7374971382]  # آیدی عددی خودت
+ADMINS = [191196976]  # آیدی عددی خودت
 USERS_FILE = "users.json"
 # ------------------------------
 
@@ -49,7 +49,7 @@ def main_menu_kb(user_id=None, is_vip=False):
             InlineKeyboardButton(text="🧾 مشخصات حساب", callback_data="account"),
         ],
         [
-            InlineKeyboardButton(text="☎️ پشتیبانی ربات", url="https://t.me/aiireza_1383"),
+            InlineKeyboardButton(text="☎️ پشتیبانی ربات", url="https://t.me/e11_S33"),
         ]
     ])
 
@@ -163,3 +163,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
