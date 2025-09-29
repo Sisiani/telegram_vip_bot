@@ -1,166 +1,122 @@
 import logging
-import json
-import asyncio
-from aiogram import Bot, Dispatcher, types
+from aiogram import Bot, Dispatcher, executor, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.filters import Command
+import os
 
-# ---------- تنظیمات ----------
-BOT_TOKEN = "8311865694:AAHrQDLSJcFKOztBj8X2PtMafk7U7AML0Uo"
-CHANNEL_ID = "@neuranacademy"
-ADMINS = [191196976]  # آیدی عددی خودت
-USERS_FILE = "users.json"
-# ------------------------------
+# دریافت توکن ربات از Railway
+API_TOKEN = os.getenv("8311865694:AAHrQDLSJcFKOztBj8X2PtMafk7U7AML0Uo")
 
+# لاگ
 logging.basicConfig(level=logging.INFO)
 
-bot = Bot(token=BOT_TOKEN)
-dp = Dispatcher()
+bot = Bot(token=API_TOKEN)
+dp = Dispatcher(bot)
 
-# === ذخیره کاربرها ===
-def save_user(user_id: int):
-    try:
-        with open(USERS_FILE, "r") as f:
-            users = json.load(f)
-    except FileNotFoundError:
-        users = []
+# ===== مقادیر قابل تغییر =====
+ADMIN_GROUP_ID = -1003086390705  # آیدی گروه خصوصی ادمین‌ها (با -100 شروع میشه)
+VIP_CHANNEL_LINK = "https://t.me/NEURANAcademy"  # لینک کانال VIP
 
-    if user_id not in users:
-        users.append(user_id)
-        with open(USERS_FILE, "w") as f:
-            json.dump(users, f)
+EXCHANGE_LINKS = {
+    "XT": "https://www.xtfarsi.net/en/accounts/register?ref=1133",
+    "OURBIT": "https://www.ourbit.com/register?inviteCode=S3ZCNR",
+    "BITUNIX": "https://www.bitunix.com/register?vipCode=hajamin",
+    "TOOBIT": "https://www.toobit.com/t/lpOdP4"
+}
+# ==============================
 
-def get_users():
-    try:
-        with open(USERS_FILE, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return []
+# دکمه‌های اصلی
+def main_menu():
+    keyboard = InlineKeyboardMarkup(row_width=2)
+    keyboard.add(InlineKeyboardButton("⚡️ عضویت در Neuran academy 💰", callback_data="join_academy"))
+    keyboard.row(
+        InlineKeyboardButton("💳 دریافت اشتراک", callback_data="get_sub"),
+        InlineKeyboardButton("🚀 دریافت بونس ویژه", callback_data="get_bonus")
+    )
+    keyboard.row(
+        InlineKeyboardButton("👤 مشخصات حساب", callback_data="account_info"),
+        InlineKeyboardButton("📞 پشتیبانی", url="https://t.me/AIireza_1383")
+    )
+    return keyboard
 
-# === کیبورد منوی اصلی ===
-def main_menu_kb(user_id=None, is_vip=False):
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="🔵 عضویت در کانال VIP", callback_data="check_sub"),
-            InlineKeyboardButton(text="🎁 دریافت بونوس", callback_data="bonus"),
-        ],
-        [
-            InlineKeyboardButton(text="📩 دریافت اشتراک", callback_data="get_sub"),
-            InlineKeyboardButton(text="🧾 مشخصات حساب", callback_data="account"),
-        ],
-        [
-            InlineKeyboardButton(text="☎️ پشتیبانی ربات", url="https://t.me/e11_S33"),
-        ]
-    ])
+# استارت
+@dp.message_handler(commands=["start"])
+async def send_welcome(message: types.Message):
+    await message.answer("سلام 👋 به ربات خوش اومدی!", reply_markup=main_menu())
 
-    if is_vip:
-        kb.inline_keyboard.append(
-            [InlineKeyboardButton(text="💰 کریپتو", callback_data="exchange_menu")]
-        )
+# دکمه دریافت اشتراک
+@dp.callback_query_handler(lambda c: c.data == "get_sub")
+async def process_subscription(callback: types.CallbackQuery):
+    kb = InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        InlineKeyboardButton("XT", callback_data="exchange_X1"),
+        InlineKeyboardButton("TOOBIT", callback_data="exchange_X2"),
+        InlineKeyboardButton("BITUNIX", callback_data="exchange_X3"),
+        InlineKeyboardButton("OURBIT ", callback_data="exchange_X4"),
+    )
+    await callback.message.edit_text("یکی از صرافی‌ها رو انتخاب کن:", reply_markup=kb)
 
-    if user_id in ADMINS:
-        kb.inline_keyboard.append(
-            [InlineKeyboardButton(text="📢 ارسال پیام همگانی", callback_data="broadcast")]
-        )
+# وقتی صرافی انتخاب شد
+@dp.callback_query_handler(lambda c: c.data.startswith("exchange"))
+async def process_exchange(callback: types.CallbackQuery):
+    exchange_name = callback.data.split("_")[1]
+    kb = InlineKeyboardMarkup(row_width=2)
+    kb.add(
+        InlineKeyboardButton("از قبل حساب دارم", callback_data=f"have_acc_{exchange_name}"),
+        InlineKeyboardButton("حساب ندارم (ساخت حساب)", callback_data=f"new_acc_{exchange_name}")
+    )
+    await callback.message.edit_text(f"✅ شما صرافی {exchange_name} را انتخاب کردید.\nلطفا یکی از گزینه‌ها را انتخاب کنید:", reply_markup=kb)
 
-    return kb
+# اگر کاربر حساب داشته باشه
+@dp.callback_query_handler(lambda c: c.data.startswith("have_acc"))
+async def ask_uid(callback: types.CallbackQuery):
+    exchange_name = callback.data.split("_")[-1]
+    await callback.message.answer(
+        f"لطفا UID صرافی {exchange_name} خود را وارد کنید تا ادمین تایید کند."
+    )
 
-# === کیبورد منوی صرافی ===
-def exchange_menu_kb():
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="صرافی XT", url="https://www.xtfarsi.net/en/accounts/register?ref=1133")],
-        [InlineKeyboardButton(text="صرافی OURBIT", url="https://www.ourbit.com/register?inviteCode=S3ZCNR")],
-        [InlineKeyboardButton(text="صرافی BITUNIX", url="https://www.bitunix.com/register?vipCode=hajamin")],
-        [InlineKeyboardButton(text="صرافی TOOBIT", url="https://www.toobit.com/t/lpOdP4")],
-        [InlineKeyboardButton(text="⬅️ بازگشت", callback_data="back_to_main")]
-    ])
-    return kb
+# اگر کاربر حساب نداشته باشه
+@dp.callback_query_handler(lambda c: c.data.startswith("new_acc"))
+async def new_account(callback: types.CallbackQuery):
+    kb = InlineKeyboardMarkup(row_width=2)
+    for name, link in EXCHANGE_LINKS.items():
+        kb.add(InlineKeyboardButton(name, url=link))
+    await callback.message.edit_text("یکی از صرافی‌های زیر را برای ثبت‌نام انتخاب کنید:", reply_markup=kb)
 
-# === بررسی عضویت کانال ===
-async def user_is_member(user_id: int) -> bool:
-    try:
-        mem = await bot.get_chat_member(CHANNEL_ID, user_id)
-        return mem.status in ("creator", "administrator", "member")
-    except Exception as e:
-        logging.error(f"Error checking membership: {e}")
-        return False
+# وقتی کاربر UID بفرسته
+@dp.message_handler(lambda m: m.text.isdigit())
+async def get_uid(message: types.Message):
+    uid = message.text
+    user = message.from_user
+    username = f"@{user.username}" if user.username else f"{user.full_name}"
+    await bot.send_message(
+        ADMIN_GROUP_ID,
+        f"🔔 کاربر جدید UID فرستاد:\n👤 آیدی: {username}\n🆔 UID: {uid}\n\nادمین لطفا تایید کنید."
+    )
+    await message.answer("✅ UID شما برای بررسی به ادمین ارسال شد.")
 
-@dp.message(Command("start"))
-async def cmd_start(message: types.Message):
-    save_user(message.from_user.id)
-    is_member = await user_is_member(message.from_user.id)
-    text = f"سلام {message.from_user.first_name or ''} 👋\nبه ربات VIP خوش آمدی!"
-    await message.answer(text, reply_markup=main_menu_kb(message.from_user.id, is_member))
-
-@dp.callback_query(lambda c: c.data == "check_sub")
-async def cb_check_sub(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    ok = await user_is_member(user_id)
-    if ok:
-        await callback.message.answer("✅ شما عضو کانال VIP هستید و دسترسی دارید.",
-                                      reply_markup=main_menu_kb(user_id, True))
-    else:
-        join_kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="📢 ورود به کانال", url=f"https://t.me/{CHANNEL_ID.lstrip('@')}")],
-            [InlineKeyboardButton(text="📥 من عضو شدم، بررسی مجدد", callback_data="check_sub")]
-        ])
-        await callback.message.answer(
-            "⛔ شما هنوز عضو کانال نیستید.\nلطفاً عضو شوید و دوباره امتحان کنید.",
-            reply_markup=join_kb
-        )
-
-@dp.callback_query(lambda c: c.data == "account")
-async def cb_account(callback: types.CallbackQuery):
-    user_id = callback.from_user.id
-    ok = await user_is_member(user_id)
-    if ok:
-        await callback.message.answer("✅ شما اکنون عضو کانال VIP هستید")
-    else:
-        await callback.message.answer("⛔ شما هنوز وارد کانال VIP نشدید")
-
-@dp.callback_query(lambda c: c.data == "get_sub")
-async def cb_get_sub(callback: types.CallbackQuery):
-    await callback.message.answer("📩 برای خرید اشتراک اینجا لینک پرداخت قرار می‌گیرد.")
-
-@dp.callback_query(lambda c: c.data == "bonus")
-async def cb_bonus(callback: types.CallbackQuery):
-    await callback.message.answer("🎁 بونوس شما: کد هدیه BONUS123")
-
-@dp.callback_query(lambda c: c.data == "exchange_menu")
-async def cb_exchange_menu(callback: types.CallbackQuery):
-    await callback.message.edit_text("یکی از صرافی‌های زیر را انتخاب کنید:", reply_markup=exchange_menu_kb())
-
-@dp.callback_query(lambda c: c.data == "back_to_main")
-async def cb_back_to_main(callback: types.CallbackQuery):
-    is_member = await user_is_member(callback.from_user.id)
-    await callback.message.edit_text("به منوی اصلی بازگشتید:", reply_markup=main_menu_kb(callback.from_user.id, is_member))
-
-# === ارسال پیام همگانی برای ادمین ===
-@dp.callback_query(lambda c: c.data == "broadcast")
-async def cb_broadcast(callback: types.CallbackQuery):
-    if callback.from_user.id not in ADMINS:
-        return await callback.message.answer("❌ شما دسترسی ندارید.")
-    await callback.message.answer("✍️ پیام خود را ارسال کنید:")
-
-    @dp.message()
-    async def get_broadcast(msg: types.Message):
-        if msg.from_user.id not in ADMINS:
-            return
-        users = get_users()
-        sent = 0
-        for user_id in users:
-            try:
-                await bot.send_message(user_id, msg.text)
-                sent += 1
-                await asyncio.sleep(0.05)
-            except:
-                pass
-        await msg.answer(f"✅ پیام برای {sent} نفر ارسال شد.")
-        dp.message.handlers.unregister(get_broadcast)
-
-async def main():
-    await dp.start_polling(bot)
+# وقتی ادمین ریپلای کنه و بنویسه تایید
+@dp.message_handler(lambda m: m.reply_to_message and m.text.lower() == "تایید")
+async def approve_user(message: types.Message):
+    if message.reply_to_message:
+        text = message.reply_to_message.text
+        if "UID" in text and "آیدی" in text:
+            username_line = [line for line in text.splitlines() if "آیدی:" in line][0]
+            username = username_line.split("@")[-1]
+            if username:
+                await bot.send_message(
+                    message.chat.id,
+                    f"✅ کاربر @{username} تایید شد."
+                )
+                try:
+                    await bot.send_message(
+                        f"@{username}",
+                        f"🎉 تبریک! حساب شما توسط ادمین تایید شد.\nاکنون می‌توانید به کانال VIP بپیوندید 🚀",
+                        reply_markup=InlineKeyboardMarkup().add(
+                            InlineKeyboardButton("📢 ورود به کانال VIP", url=VIP_CHANNEL_LINK)
+                        )
+                    )
+                except:
+                    pass
 
 if __name__ == "__main__":
-    asyncio.run(main())
-
+    executor.start_polling(dp, skip_updates=True)
